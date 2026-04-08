@@ -1,0 +1,1154 @@
+1. System Design Questions (Most Common)
+
+These are almost guaranteed for senior backend roles.
+
+Design URL Shortener (TinyURL)
+
+Topics they check:
+
+Hash generation
+DB schema
+Cache (Redis)
+Handling billions of URLs
+Collision handling
+
+Architecture
+
+Client
+↓
+API Gateway
+↓
+URL Service
+↓
+Redis Cache
+↓
+Database
+Design Payment Gateway (Stripe / Razorpay)
+
+Topics they check:
+
+idempotency
+retries
+fraud detection
+distributed transactions
+reconciliation
+
+Typical flow
+
+User → Merchant → Payment Gateway → Bank → Settlement
+Design Notification System
+
+Example
+
+Send 10M notifications per minute
+
+Channels
+
+Email
+SMS
+Push notification
+
+Architecture
+
+API
+↓
+Kafka
+↓
+Notification Workers
+↓
+Email/SMS Providers
+Design Chat System (WhatsApp)
+
+They check:
+
+WebSockets
+message delivery
+message ordering
+offline messages
+
+Architecture
+
+Client
+↓
+Chat Gateway
+↓
+Message Queue
+↓
+Message Service
+↓
+DB
+2. High Scale System Questions
+How would you design system to handle 100k requests per second
+
+Expected answer areas:
+
+load balancer
+autoscaling
+caching
+CDN
+async processing
+sharding
+How to handle traffic spike (10x suddenly)
+
+Example scenario
+
+Black Friday sale
+
+Expected solutions:
+
+autoscaling
+queue buffering
+rate limiting
+circuit breaker
+How to avoid database becoming bottleneck
+
+Expected answers:
+
+caching
+read replicas
+sharding
+connection pooling
+query optimization
+3. Concurrency & Multithreading Questions
+
+These come often for Java backend interviews.
+
+How do you prevent race condition?
+
+Example
+
+Two users booking same seat
+
+Solutions
+
+DB locking
+optimistic locking
+distributed lock
+atomic operations
+Difference
+synchronized
+ReentrantLock
+ConcurrentHashMap
+AtomicInteger
+Thread pool tuning
+
+Interview question
+
+How do you tune thread pools for high traffic?
+
+Expected discussion:
+
+CPU vs IO tasks
+core threads
+queue size
+rejection policies
+4. Failure Handling Questions
+
+Very common for senior roles.
+
+What happens if downstream service fails?
+
+Solutions
+
+circuit breaker
+retry
+fallback
+timeout
+
+Tools
+
+Resilience4j
+Hystrix (old)
+What happens if Kafka goes down
+
+Expected answers
+
+retry queue
+DLQ (Dead Letter Queue)
+replication
+How to prevent cascading failures
+
+Use
+
+circuit breaker
+bulkhead isolation
+rate limiting
+5. Database Design Questions
+SQL vs NoSQL
+
+When to use
+
+SQL	NoSQL
+ACID	eventual consistency
+transactions	high scale
+banking	caching / analytics
+How to design schema for billions of records
+
+Topics
+
+partitioning
+sharding
+indexing
+How to avoid hot partitions
+
+Example
+
+UserID hashing
+6. Caching Questions
+
+Very common.
+
+Cache strategies
+Cache aside
+Write through
+Write back
+Cache invalidation problem
+
+Example
+
+User profile updated
+
+Need to
+
+invalidate Redis
+Cache stampede
+
+Many users request same data when cache expires.
+
+Solution
+
+cache locking
+random TTL
+request coalescing
+7. Observability Questions
+
+Senior engineers are expected to know this.
+
+How do you monitor distributed systems?
+
+Tools
+
+Prometheus
+Grafana
+ELK stack
+
+Metrics
+
+latency
+error rate
+throughput
+How do you debug production issue?
+
+Typical approach
+
+logs
+metrics
+tracing
+
+Tools
+
+Zipkin
+Jaeger
+OpenTelemetry
+8. API Design Questions
+REST API best practices
+
+Topics
+
+versioning
+pagination
+idempotency
+rate limiting
+REST vs gRPC
+REST	gRPC
+JSON	protobuf
+slower	faster
+public APIs	internal services
+9. Microservices Questions
+Monolith vs Microservices
+
+They want to see
+
+tradeoffs
+complexity
+deployment strategy
+Service communication
+REST
+gRPC
+messaging (Kafka)
+Distributed transactions
+
+Solutions
+
+Saga pattern
+event sourcing
+eventual consistency
+10. Real Production Scenario Questions
+
+These are very common for 10+ year interviews.
+
+Scenario 1
+Your API latency increased from 100ms to 3s.
+How will you debug?
+
+Expected answer
+
+check metrics
+check DB queries
+check downstream service
+check thread pools
+Scenario 2
+One microservice is consuming too much CPU.
+
+Possible causes
+
+infinite loop
+high GC
+blocking calls
+Scenario 3
+Database connection pool exhausted
+
+Solutions
+
+increase pool
+fix slow queries
+connection leaks
+11. Very Popular Senior Interview Questions
+
+These appear again and again.
+
+1️⃣ Design Rate Limiter
+2️⃣ Design URL Shortener
+3️⃣ Design Payment System
+4️⃣ Design Notification Service
+5️⃣ Design Distributed Cache
+6️⃣ Design Chat System
+7️⃣ Design Search System (like ElasticSearch)
+8️⃣ Design File Upload Service
+9️⃣ Design API Gateway
+🔟 Design Order Processing System
+
+One Important Tip for 10+ Year Interviews
+
+Interviewers expect this structured answer approach:
+
+Always answer in order:
+
+1 Requirements
+2 High level architecture
+3 Data model
+4 Scalability
+5 Fault tolerance
+6 Tradeoffs
+
+Circuit Breaker Pattern (Distributed Systems)
+What Problem Does It Solve?
+
+In microservices, one service often calls another.
+
+Example:
+
+Order Service → Payment Service → Bank API
+
+If Bank API becomes slow or down, then:
+
+Payment service waits
+Threads get blocked
+Request queue grows
+Eventually entire system crashes
+
+This is called:
+
+🚨 Cascading Failure
+
+Circuit breaker prevents this.
+
+Real World Analogy
+
+Think of an electrical circuit breaker.
+
+When current overload happens:
+
+Circuit Breaker → trips → stops electricity
+
+This protects devices.
+
+Same idea in software.
+
+If service keeps failing:
+
+Circuit Breaker → stops calling service temporarily
+Circuit Breaker States
+
+There are 3 states.
+
+1. Closed State (Normal)
+
+Everything works normally.
+
+Service A → Service B → success
+
+Requests flow normally.
+
+System also monitors:
+
+failure count
+response time
+2. Open State (Failure Mode)
+
+If failures cross threshold:
+
+Example
+
+50% failures in last 10 seconds
+
+Circuit breaker opens.
+
+Now:
+
+Service A → Service B (blocked)
+
+Requests fail immediately.
+
+Instead return:
+
+fallback response
+cached response
+error message
+
+Example
+
+Payment temporarily unavailable
+
+This prevents thread exhaustion.
+
+3. Half-Open State (Recovery Check)
+
+After some time:
+
+sleep window = 30 seconds
+
+Circuit breaker allows few test requests.
+
+Service A → Service B (test call)
+
+If success:
+
+Circuit → CLOSED
+
+If failure:
+
+Circuit → OPEN again
+Circuit Breaker Flow
+Request
+↓
+Circuit Breaker
+↓
+Service Call
+
+Possible outcomes
+
+Success → return response
+Failure threshold reached → open circuit
+Open circuit → return fallback
+Simple Flow Diagram
+Closed
+↓ failures
+Open
+↓ timeout
+Half-Open
+↓ success
+Closed
+Example Scenario (Interview)
+
+Example:
+
+Order Service → Inventory Service
+
+Inventory service becomes slow.
+
+Without circuit breaker:
+
+threads waiting
+↓
+thread pool exhausted
+↓
+entire order system crashes
+
+With circuit breaker:
+
+Order Service → Circuit Breaker
+↓
+fallback response
+
+System stays healthy.
+
+Circuit Breaker in Java (Resilience4j)
+
+Modern Java microservices use Resilience4j.
+
+Example:
+
+@CircuitBreaker(name = "paymentService", fallbackMethod = "fallback")
+public String callPaymentService() {
+return restTemplate.getForObject(
+"http://payment/api",
+String.class
+);
+}
+
+public String fallback(Exception ex) {
+return "Payment service temporarily unavailable";
+}
+
+Configuration example
+
+resilience4j:
+circuitbreaker:
+instances:
+paymentService:
+failureRateThreshold: 50
+waitDurationInOpenState: 30s
+slidingWindowSize: 10
+Related Patterns (Often Asked Together)
+
+Interviewers often ask these together.
+
+Pattern	Purpose
+Retry	Retry failed requests
+Timeout	Stop waiting after time
+Bulkhead	Isolate resources
+Circuit Breaker	Prevent cascading failures
+Fallback	Return alternative response
+Real Production Example
+
+Example: Amazon checkout
+
+Checkout Service
+↓
+Recommendation Service
+
+If recommendation service fails:
+
+Instead of blocking checkout:
+
+Circuit Breaker → skip recommendations
+
+User can still complete purchase.
+
+Senior-Level Interview Answer
+
+When interviewer asks:
+
+"How do you prevent cascading failures in microservices?"
+
+Good answer:
+
+"We implement resilience patterns like timeouts, retries, circuit breakers, and bulkhead isolation. Circuit breakers monitor downstream failures and temporarily stop calls when the failure rate crosses a threshold, preventing thread exhaustion and cascading failures."
+
+One More Advanced Question They May Ask
+
+Follow-up questions might be:
+
+Difference between Retry vs Circuit Breaker
+What is Bulkhead pattern
+How Hystrix vs Resilience4j works
+How to tune failure threshold
+Where to place circuit breaker (client vs gateway)
+
+1. Difference: Retry vs Circuit Breaker
+Aspect	Retry	Circuit Breaker
+Purpose	Retry failed request	Prevent calling failing service
+Behavior	Re-attempt request	Stop requests temporarily
+Use case	Temporary network glitches	Service outage
+Risk	Can overload failing service	Protects system
+Example	retry 3 times	open circuit after failures
+Example Scenario
+Retry Flow
+Order Service → Payment Service
+
+Payment fails due to network glitch.
+
+System retries.
+
+Attempt 1 → Fail
+Attempt 2 → Success
+
+Retry is useful for transient failures.
+
+Circuit Breaker Flow
+
+Payment service completely down.
+
+Without circuit breaker:
+
+Order → Payment
+Order → Payment
+Order → Payment
+
+Threads keep waiting.
+
+System crashes.
+
+With circuit breaker:
+
+Order → Circuit Breaker
+↓
+fallback response
+
+Requests fail fast.
+
+Interview Tip
+
+Strong answer:
+
+Retry handles temporary failures, while circuit breaker protects the system when a dependency becomes consistently unhealthy.
+
+In practice we combine:
+
+Retry + Circuit Breaker + Timeout
+2. Bulkhead Pattern
+
+Bulkhead pattern isolates system resources so one failure does not affect the whole system.
+
+Real World Analogy
+
+Ships have separate compartments (bulkheads).
+
+If one compartment floods:
+
+Only that section floods
+Ship does not sink
+Software Example
+
+Example service:
+
+Ecommerce Service
+
+Calls:
+
+Payment Service
+Recommendation Service
+Notification Service
+
+Without bulkhead:
+
+Single thread pool
+
+If recommendation service becomes slow:
+
+All threads blocked
+Checkout also stops
+With Bulkhead
+
+Separate resources.
+
+ThreadPool1 → Payment
+ThreadPool2 → Recommendation
+ThreadPool3 → Notification
+
+If recommendation fails:
+
+Checkout still works
+Java Example (Resilience4j)
+@Bulkhead(name = "paymentService", type = Bulkhead.Type.THREADPOOL)
+public String processPayment() {
+return paymentService.call();
+}
+3. Hystrix vs Resilience4j
+
+Hystrix used to be the Netflix standard, but now Resilience4j replaced it.
+
+Feature	Hystrix	Resilience4j
+Maintained	❌ No	✅ Yes
+Library size	Heavy	Lightweight
+Programming model	Thread isolation	Functional
+Spring Boot support	Old	Modern
+Performance	Lower	Higher
+Hystrix Example
+@HystrixCommand(fallbackMethod = "fallback")
+public String callPayment() {
+return restTemplate.getForObject(url, String.class);
+}
+Resilience4j Example
+@CircuitBreaker(name="paymentService", fallbackMethod="fallback")
+public String callPayment() {
+return restTemplate.getForObject(url, String.class);
+}
+Why Industry Moved to Resilience4j
+
+Reasons:
+
+modular architecture
+better performance
+supports reactive programming
+integrates with Spring Boot 2+
+4. How to Tune Failure Threshold
+
+Circuit breaker triggers based on failure rate.
+
+Common configuration:
+
+failureRateThreshold: 50
+slidingWindowSize: 20
+waitDurationInOpenState: 30s
+Meaning
+
+Example:
+
+Last 20 requests monitored
+
+If
+
+10 failures → 50%
+
+Circuit opens.
+
+Key Parameters
+Failure Rate Threshold
+
+Typical value
+
+50% – 60%
+Sliding Window Size
+
+Number of requests monitored.
+
+Example
+
+20 requests
+50 requests
+100 requests
+Open State Duration
+
+How long circuit remains open.
+
+Example
+
+30 seconds
+
+After that
+
+Half-open state
+How Companies Tune It
+
+Based on:
+
+SLA
+error rate
+service latency
+traffic patterns
+
+Example:
+
+Payment service → strict threshold
+Recommendation service → relaxed threshold
+5. Where to Place Circuit Breaker
+
+Two options.
+
+Option 1 — Client Side (Most Common)
+
+Service calling another service applies circuit breaker.
+
+Example
+
+Order Service → Circuit Breaker → Payment Service
+
+Advantages
+
+fine control
+service specific configuration
+
+Used in
+
+Spring Boot + Resilience4j
+Option 2 — API Gateway Level
+
+Gateway protects backend services.
+
+Example
+
+Client
+↓
+API Gateway (Circuit Breaker)
+↓
+Microservices
+
+Used in
+
+Spring Cloud Gateway
+Kong
+Envoy
+Best Practice
+
+Use both.
+
+Gateway → coarse protection
+Service → fine protection
+6. Routing from API Gateway Perspective
+
+API Gateway is responsible for routing requests to correct microservice.
+
+Basic Routing Example
+
+Gateway routes based on URL.
+
+/api/orders → Order Service
+/api/payments → Payment Service
+/api/users → User Service
+
+Architecture
+
+Client
+↓
+API Gateway
+↓
+Service Routing
+Example: Spring Cloud Gateway
+
+Configuration
+
+spring:
+cloud:
+gateway:
+routes:
+- id: order-service
+uri: http://order-service
+predicates:
+- Path=/api/orders/**
+
+- id: payment-service
+uri: http://payment-service
+predicates:
+- Path=/api/payments/**
+API Gateway with Circuit Breaker
+
+Example flow
+
+Client
+↓
+API Gateway
+↓
+Circuit Breaker
+↓
+Order Service
+↓
+Payment Service
+
+If payment fails
+
+Circuit breaker returns fallback
+API Gateway Responsibilities
+
+Senior interview answer:
+
+API gateway typically handles:
+
+Routing
+Authentication
+Rate limiting
+Load balancing
+Circuit breaker
+Request logging
+SSL termination
+Example Full Architecture
+Client
+↓
+CDN
+↓
+API Gateway
+↓
+Load Balancer
+↓
+Microservices
+↓
+Kafka / Redis
+↓
+Database
+Strong Senior-Level Interview Statement
+
+You can say:
+
+"In distributed systems we apply resilience patterns like retry, timeout, circuit breaker, and bulkhead. Circuit breakers are usually implemented at the client side using Resilience4j, while API gateways handle routing, rate limiting, and coarse-grained circuit protection."
+
+
+
+Code for all
+I'll show code for:
+
+Circuit Breaker
+Retry
+Timeout (TimeLimiter)
+Bulkhead
+Rate Limiter
+API Gateway Routing
+API Gateway Circuit Breaker + Rate Limit
+
+All examples assume Spring Boot + Resilience4j + Spring Cloud Gateway.
+
+1. Circuit Breaker (Resilience4j)
+Dependency
+<dependency>
+    <groupId>io.github.resilience4j</groupId>
+    <artifactId>resilience4j-spring-boot3</artifactId>
+</dependency>
+Service Code
+@Service
+public class PaymentServiceClient {
+
+@CircuitBreaker(name = "paymentService", fallbackMethod = "fallback")
+public String callPaymentService() {
+
+return restTemplate.getForObject(
+"http://payment-service/api/pay",
+String.class
+);
+}
+
+public String fallback(Exception ex) {
+return "Payment service temporarily unavailable";
+}
+}
+Configuration
+resilience4j:
+circuitbreaker:
+instances:
+paymentService:
+failureRateThreshold: 50
+slidingWindowSize: 10
+waitDurationInOpenState: 30s
+2. Retry Pattern
+
+Retries failed requests automatically.
+
+Code
+@Service
+public class PaymentRetryService {
+
+@Retry(name = "paymentRetry", fallbackMethod = "fallback")
+public String processPayment() {
+
+return restTemplate.getForObject(
+"http://payment-service/api/pay",
+String.class
+);
+}
+
+public String fallback(Exception ex) {
+return "Retry failed";
+}
+}
+Config
+resilience4j:
+retry:
+instances:
+paymentRetry:
+maxAttempts: 3
+waitDuration: 2s
+
+Flow
+
+Request
+↓
+Fail
+↓
+Retry
+↓
+Retry again
+↓
+Fallback
+3. Timeout (TimeLimiter)
+
+Prevents requests from waiting forever.
+
+Code
+@Service
+public class PaymentTimeoutService {
+
+@TimeLimiter(name = "paymentTimeout")
+public CompletableFuture<String> callPayment() {
+
+    return CompletableFuture.supplyAsync(() ->
+    restTemplate.getForObject(
+    "http://payment-service/api/pay",
+    String.class
+    )
+    );
+    }
+    }
+    Config
+    resilience4j:
+    timelimiter:
+    instances:
+    paymentTimeout:
+    timeoutDuration: 2s
+
+    If service takes >2 seconds → request fails.
+
+    4. Bulkhead Pattern
+
+    Limits number of concurrent calls.
+
+    Code
+    @Service
+    public class PaymentBulkheadService {
+
+    @Bulkhead(name = "paymentBulkhead", type = Bulkhead.Type.THREADPOOL)
+    public String processPayment() {
+
+    return restTemplate.getForObject(
+    "http://payment-service/api/pay",
+    String.class
+    );
+    }
+    }
+    Config
+    resilience4j:
+    bulkhead:
+    instances:
+    paymentBulkhead:
+    maxConcurrentCalls: 10
+
+    Meaning
+
+    Only 10 requests allowed simultaneously
+
+    Extra requests rejected.
+
+    5. Rate Limiter (Resilience4j)
+
+    Limits number of requests.
+
+    Code
+    @Service
+    public class PaymentRateLimiterService {
+
+    @RateLimiter(name = "paymentRateLimiter")
+    public String callPayment() {
+
+    return restTemplate.getForObject(
+    "http://payment-service/api/pay",
+    String.class
+    );
+    }
+    }
+    Config
+    resilience4j:
+    ratelimiter:
+    instances:
+    paymentRateLimiter:
+    limitForPeriod: 10
+    limitRefreshPeriod: 1s
+
+    Meaning
+
+    10 requests allowed per second
+    6. API Gateway Routing (Spring Cloud Gateway)
+
+    Gateway routes requests to services.
+
+    Dependency
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-gateway</artifactId>
+    </dependency>
+    Routing Config
+    spring:
+    cloud:
+    gateway:
+    routes:
+
+    - id: order-service
+    uri: http://localhost:8081
+    predicates:
+    - Path=/api/orders/**
+
+    - id: payment-service
+    uri: http://localhost:8082
+    predicates:
+    - Path=/api/payments/**
+
+    Flow
+
+    Client
+    ↓
+    API Gateway
+    ↓
+    Routing
+    ↓
+    Order / Payment Service
+    7. API Gateway Circuit Breaker
+
+    Gateway protects services.
+
+    Config
+    spring:
+    cloud:
+    gateway:
+    routes:
+    - id: payment-service
+    uri: http://localhost:8082
+    predicates:
+    - Path=/api/pay/**
+    filters:
+    - name: CircuitBreaker
+    args:
+    name: paymentCircuitBreaker
+    fallbackUri: forward:/fallback
+    Fallback Controller
+    @RestController
+    public class FallbackController {
+
+    @RequestMapping("/fallback")
+    public String fallback() {
+    return "Payment service unavailable";
+    }
+    }
+    8. API Gateway Rate Limiting (Redis)
+
+    Example using Redis rate limiter.
+
+    Config
+    spring:
+    cloud:
+    gateway:
+    routes:
+    - id: order-service
+    uri: http://localhost:8081
+    predicates:
+    - Path=/api/orders/**
+    filters:
+    - name: RequestRateLimiter
+    args:
+    redis-rate-limiter.replenishRate: 10
+    redis-rate-limiter.burstCapacity: 20
+
+    Meaning
+
+    10 requests/sec
+    burst allowed up to 20
+    9. Combined Architecture
+
+    Typical production setup.
+
+    Client
+    ↓
+    API Gateway
+    ↓
+    Rate Limiter
+    ↓
+    Routing
+    ↓
+    Microservice
+    ↓
+    Resilience4j
+    (Retry + CircuitBreaker + Bulkhead + Timeout)
+    ↓
+    Database
+    10. Senior Interview Answer (Very Powerful)
+
+    You can say this:
+
+    "At the gateway layer we implement routing, authentication, and coarse-grained protections like rate limiting and circuit breakers. At the service layer we use Resilience4j to implement retry, timeout, bulkhead isolation, and fine-grained circuit breakers to prevent cascading failures."
+
