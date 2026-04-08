@@ -1,0 +1,903 @@
+Distributed Systems – Interview Notes (Senior Backend / 10+ Years)
+1. Communication Types – Synchronous vs Asynchronous
+1.1 Synchronous Communication
+
+Definition
+
+Client sends request → waits for response.
+
+Example
+
+REST API call
+Database query
+Blocking HTTP request
+
+Spring Example
+
+Using RestTemplate
+
+RestTemplate restTemplate = new RestTemplate();
+
+String response = restTemplate.getForObject(
+"http://orderservice/order/1",
+String.class
+);
+Characteristics
+Feature	Value
+Blocking	Yes
+Latency	Higher
+Complexity	Low
+Error Handling	Easy
+When to use
+Simple services
+Small latency
+Immediate response required
+1.2 Asynchronous Communication
+
+Definition
+
+Client sends request → continues execution → result comes later.
+
+Examples
+
+Kafka
+RabbitMQ
+Async HTTP calls
+CompletableFuture
+
+Spring WebClient Example
+
+WebClient client = WebClient.create();
+
+Mono<String> response = client.get()
+    .uri("http://orderservice/order/1")
+    .retrieve()
+    .bodyToMono(String.class);
+
+    response.subscribe(System.out::println);
+    Characteristics
+    Feature	Value
+    Blocking	No
+    Latency	Low
+    Throughput	High
+    Complexity	High
+    Used in
+    Distributed systems
+    High traffic systems
+    Microservices communication
+    2. Feign Client vs RestTemplate vs WebClient
+    RestTemplate
+
+    Traditional synchronous client
+
+    Service A → RestTemplate → Service B
+
+    Pros
+
+    Simple
+    Blocking
+
+    Cons
+
+    Not scalable under high load
+    Deprecated in Spring
+    Feign Client
+
+    Declarative REST client
+
+    Example
+
+    @FeignClient(name="order-service")
+    public interface OrderClient {
+
+    @GetMapping("/order/{id}")
+    Order getOrder(@PathVariable Long id);
+    }
+
+    Advantages
+
+    Clean code
+    Auto serialization
+    Load balancing (Ribbon / Spring Cloud)
+
+    Used in microservices
+
+    WebClient
+
+    Reactive non-blocking HTTP client
+
+    WebClient client = WebClient.create();
+
+    client.get()
+    .uri("/order/1")
+    .retrieve()
+    .bodyToMono(Order.class);
+
+    Advantages
+
+    Non-blocking
+    High throughput
+    Works with WebFlux
+
+    Best for high scale systems
+
+    3. Parallel Calls
+
+    Interviewers often ask:
+
+    How do you call multiple services in parallel?
+
+    3.1 Callable + Future
+
+    Example
+
+    ExecutorService executor = Executors.newFixedThreadPool(5);
+
+    Callable<String> task = () -> {
+        return restTemplate.getForObject("http://service", String.class);
+        };
+
+        Future<String> future = executor.submit(task);
+
+            String result = future.get();
+
+            Problem
+
+            Blocking
+            Hard to manage multiple calls
+            3.2 CompletableFuture (Best Practice)
+
+            Example
+
+            CompletableFuture<String> service1 =
+                CompletableFuture.supplyAsync(() -> callService1());
+
+                CompletableFuture<String> service2 =
+                    CompletableFuture.supplyAsync(() -> callService2());
+
+                    CompletableFuture<String> service3 =
+                        CompletableFuture.supplyAsync(() -> callService3());
+
+                        CompletableFuture.allOf(service1, service2, service3).join();
+
+                        String result =
+                        service1.get() +
+                        service2.get() +
+                        service3.get();
+
+                        Advantages
+
+                        Parallel execution
+                        Non-blocking
+                        Easy aggregation
+                        4. Multiple CallableFuture Use Case
+
+                        Example scenario
+
+                        User Dashboard API
+
+                        Needs
+
+                        Order service
+                        Payment service
+                        Recommendation service
+
+                        Sequential
+
+                        API → Service1 → Service2 → Service3
+
+                        Latency
+
+                        100 + 100 + 100 = 300ms
+
+                        Parallel
+
+                        API → (S1,S2,S3) parallel
+
+                        Latency
+
+                        max(100,100,100) = 100ms
+
+                        Performance improvement
+
+                        ~66% faster
+                        5. ConcurrentHashMap – compute() Method
+
+                        Very common multi-thread interview topic
+
+                        Problem
+
+                        Multiple threads updating same key.
+
+                        Example
+
+                        PaymentCount[userId]++
+
+                        Without synchronization
+
+                        Race condition
+                        compute() Method
+                        map.compute(userId, (key, value) -> {
+                        if (value == null)
+                        return 1;
+                        else
+                        return value + 1;
+                        });
+                        Why compute()
+                        Atomic update
+                        Thread safe
+                        No race conditions
+                        6. Internal Working of ConcurrentHashMap (Java 8)
+
+                        Important interview topic.
+
+                        Old Java 7
+                        Segment Locking
+
+                        Multiple segments.
+
+                        Java 8
+
+                        Uses
+
+                        CAS + synchronized + Node level locking
+
+                        Structure
+
+                        Array of Nodes
+
+                        Steps
+
+                        Find bucket via hash
+                        If empty → CAS insert
+                        If collision → synchronized on bucket
+                        Update value
+
+                        Benefits
+
+                        Less locking
+                        Higher concurrency
+                        7. Multiple Threads Trigger Payment in Milliseconds
+
+                        Scenario
+
+                        Flash Sale / Payment Gateway
+
+                        Problem
+
+                        10000 users pay same order
+
+                        Solution
+
+                        1 Idempotency
+
+                        Prevent duplicate payment.
+
+                        paymentId
+                        2 Distributed Lock
+
+                        Example
+
+                        Redis Lock
+                        3 DB Unique Constraint
+                        order_id UNIQUE
+                        4 Atomic Processing
+
+                        Example
+
+                        ConcurrentHashMap
+                        compute()
+                        8. System Performance Optimization
+
+                        Interviewers love this question.
+
+                        Explain in 3 levels
+
+                        API Level Optimization
+                        1 Caching
+                        Redis
+
+                        Example
+
+                        Product details
+                        User profile
+                        2 Pagination
+
+                        Instead of
+
+                        GET /orders
+
+                        Use
+
+                        GET /orders?page=1&size=50
+                        3 Compression
+                        GZIP
+                        4 Async APIs
+
+                        Example
+
+                        email sending
+                        report generation
+                        Database Level Optimization
+                        Indexing
+                        CREATE INDEX idx_user_id
+                        Query Optimization
+
+                        Avoid
+
+                        SELECT *
+
+                        Use
+
+                        SELECT id,name
+                        Connection Pool
+
+                        Example
+
+                        HikariCP
+                        DB Sharding
+
+                        Split data across DBs.
+
+                        Example
+
+                        UserDB1
+                        UserDB2
+                        UserDB3
+                        Instance Level Optimization
+                        Horizontal Scaling
+                        Service Instance 1
+                        Service Instance 2
+                        Service Instance 3
+
+                        Using
+
+                        Load Balancer
+                        Auto Scaling
+
+                        Cloud
+
+                        Kubernetes HPA
+                        AWS Auto Scaling
+                        9. Improving System Performance by 40%
+
+                        Real interview answer.
+
+                        Example:
+
+                        Before
+
+                        Sequential API calls
+                        No caching
+                        No indexes
+
+                        After
+
+                        Introduced Redis caching
+                        Converted sequential calls → parallel CompletableFuture
+                        Added DB indexes
+
+                        Result
+
+                        Latency: 500ms → 300ms
+                        Throughput: +40%
+                        10. Handling 1 Million / 1 Crore Requests
+
+                        Senior level question.
+
+                        Explain architecture.
+
+                        Step 1 Load Balancer
+                        Users
+                        ↓
+                        Load Balancer
+                        ↓
+                        Service Instances
+
+                        Example
+
+                        NGINX
+                        AWS ALB
+                        Step 2 Multiple Instances
+                        Service1
+                        Service2
+                        Service3
+                        Service4
+
+                        Stateless services.
+
+                        Step 3 Rate Limiting
+
+                        Protect system.
+
+                        Techniques
+
+                        Token bucket
+                        Leaky bucket
+
+                        Tools
+
+                        Redis
+                        API Gateway
+
+                        Example
+
+                        100 req/sec per user
+                        Step 4 Caching
+
+                        Heavy traffic endpoints.
+
+                        Redis
+                        CDN
+                        Step 5 Queue Based Architecture
+
+                        For heavy processing.
+
+                        User → API → Kafka → Worker Service
+
+                        Benefits
+
+                        Back pressure
+                        High scalability
+                        Step 6 Database Scaling
+
+                        Techniques
+
+                        Read replicas
+                        Sharding
+                        Partitioning
+                        11. Handling 1 Crore Requests Without Priority
+
+                        If all customers must be served equally.
+
+                        Use
+
+                        Fair Queue
+
+                        Example
+
+                        Kafka partition
+                        Load Balancing Strategy
+                        Round Robin
+                        Backpressure
+
+                        Use
+
+                        Kafka
+                        RabbitMQ
+
+                        So requests do not drop.
+
+                        12. Golden Interview Line (Very Important)
+
+                        When interviewer asks:
+
+                        "How do you design scalable system?"
+
+                        Answer:
+
+                        1. Horizontal scaling
+                        2. Stateless services
+                        3. Caching layer
+                        4. Async processing
+                        5. Rate limiting
+                        6. Database scaling
+                        7. Observability (metrics/logs)
+                        13. Real World Architecture (Example)
+                        Users
+                        ↓
+                        CDN
+                        ↓
+                        API Gateway
+                        ↓
+                        Load Balancer
+                        ↓
+                        Microservices
+                        ↓
+                        Redis Cache
+                        ↓
+                        Kafka Queue
+                        ↓
+                        Database Cluster
+
+
+
+
+
+                        1. How Banks Handle 1 Million Transactions
+                        High Level Architecture
+
+                        img_4 , 5, 6,7 see photo before next step
+
+                        Typical architecture used by banks and payment companies.
+
+                        Clients (Apps / POS / ATM)
+                        ↓
+                        API Gateway
+                        ↓
+                        Load Balancer
+                        ↓
+                        Payment Processing Services
+                        ↓
+                        Message Queue (Kafka / RabbitMQ)
+                        ↓
+                        Worker Services
+                        ↓
+                        Database Cluster
+                        Step-by-Step Flow
+                        1. Load Balancing
+
+                        Traffic distributed across many servers.
+
+                        Example:
+
+                        1M requests
+                        ↓
+                        Load Balancer
+                        ↓
+                        50 Payment Service instances
+
+                        Each instance handles 20k requests.
+
+                        Common tools
+
+                        NGINX
+                        AWS ALB
+                        F5
+                        2. Stateless Microservices
+
+                        Payment services do not store session state.
+
+                        Example
+
+                        Payment Service 1
+                        Payment Service 2
+                        Payment Service 3
+
+                        Benefits
+
+                        Easy scaling
+                        Instance failure safe
+                        3. Queue Based Processing
+
+                        Banks use event driven architecture.
+
+                        API → Kafka → Payment Worker
+
+                        Why?
+
+                        If 1M requests arrive suddenly
+
+                        Queue buffers them.
+
+                        1M requests
+                        ↓
+                        Kafka Queue
+                        ↓
+                        Workers process gradually
+
+                        Benefits
+
+                        Prevent system crash
+                        Smooth processing
+                        4. Caching Layer
+
+                        Frequently accessed data cached.
+
+                        Examples
+
+                        Account details
+                        User limits
+                        Merchant configuration
+
+                        Tools
+
+                        Redis
+                        Memcached
+                        5. Database Scaling
+
+                        Banks use multiple DB techniques.
+
+                        Read Replicas
+                        Primary DB
+                        ↓
+                        Replica1
+                        Replica2
+                        Replica3
+
+                        Reads go to replicas.
+
+                        Sharding
+
+                        Split accounts across DBs.
+
+                        Example
+
+                        Accounts 0-10M → DB1
+                        Accounts 10M-20M → DB2
+                        Accounts 20M-30M → DB3
+
+                        This enables massive scale.
+
+                        6. Parallel Processing
+
+                        Workers process transactions concurrently.
+
+                        Example
+
+                        Worker1
+                        Worker2
+                        Worker3
+                        Worker4
+
+                        Each worker handles part of the queue.
+
+                        Final Result
+
+                        Banks can handle
+
+                        1M+ transactions per second
+
+                        Using
+
+                        horizontal scaling
+                        queues
+                        distributed databases
+                        2. How Payment Systems Prevent Double Debit
+
+                        This is one of the most important fintech interview questions.
+
+                        Example problem:
+
+                        User clicks PAY twice
+                        Network retry happens
+                        API retry happens
+
+                        Without protection
+
+                        Account debited twice
+                        Method 1 — Idempotency Key (Most Common)
+
+                        Client sends a unique id for each payment.
+
+                        Example
+
+                        POST /payment
+
+                        Headers:
+                        Idempotency-Key: txn-789123
+
+                        Server logic
+
+                        if txnId already processed
+                        return previous result
+                        else
+                        process transaction
+
+                        Database
+
+                        txn_id UNIQUE
+
+                        So duplicate requests return same response.
+
+                        Method 2 — Database Unique Constraint
+
+                        Example table
+
+                        payments
+                        ---------
+                        txn_id (unique)
+                        user_id
+                        amount
+                        status
+
+                        If duplicate request comes
+
+                        DB rejects insert
+                        Method 3 — Distributed Lock
+
+                        Used when multiple servers process same transaction.
+
+                        Example using Redis.
+
+                        SETNX payment_123 lock
+
+                        Only one server gets lock.
+
+                        Others fail.
+
+                        Method 4 — Two Phase Commit / Transaction
+
+                        Banks use ACID transactions.
+
+                        Example
+
+                        BEGIN TRANSACTION
+
+                        Debit account A
+                        Credit account B
+
+                        COMMIT
+
+                        If failure
+
+                        ROLLBACK
+                        Method 5 — Payment State Machine
+
+                        Payments follow strict states.
+
+                        INITIATED
+                        PROCESSING
+                        SUCCESS
+                        FAILED
+
+                        If status already SUCCESS
+
+                        system ignores duplicate request.
+
+                        Real Industry Example
+
+                        UPI / Stripe / PayPal all use
+
+                        Idempotency Key + DB unique constraint
+
+                        This guarantees exactly once payment processing.
+
+                        3. System Design for Rate Limiter
+
+                        Very common system design question.
+
+                        Goal
+
+                        Limit requests per user.
+
+                        Example
+
+                        100 requests per minute per user
+                        High Level Architecture
+
+                        img img_1,2,3 read
+
+                        Client
+                        ↓
+                        API Gateway
+                        ↓
+                        Rate Limiter (Redis)
+                        ↓
+                        Application Server
+                        Common Rate Limiting Algorithms
+                        1. Fixed Window
+
+                        Example
+
+                        100 requests / minute
+
+                        Implementation
+
+                        key = userId:timestamp
+                        count++
+
+                        Stored in Redis.
+
+                        Problem
+
+                        Burst allowed at boundary.
+
+                        Example
+
+                        100 requests at 59s
+                        100 requests at 1s
+
+                        Total 200.
+
+                        2. Sliding Window
+
+                        Improvement.
+
+                        Track last N seconds.
+
+                        Example
+
+                        last 60 seconds requests
+
+                        Better accuracy.
+
+                        But memory expensive.
+
+                        3. Token Bucket (Most Popular)
+
+                        Tokens refill at fixed rate.
+
+                        Example
+
+                        capacity = 100
+                        refill = 10 tokens/sec
+
+                        Flow
+
+                        Request arrives
+                        ↓
+                        If token available → allow
+                        Else → reject
+
+                        Used by
+
+                        AWS
+                        Stripe
+                        Google APIs
+                        Example Redis Implementation
+
+                        Key
+
+                        rate_limit:user123
+
+                        Value
+
+                        remaining_tokens
+                        timestamp
+
+                        Pseudo code
+
+                        if tokens > 0
+                        tokens--
+                        allow request
+                        else
+                        reject request
+                        Where Rate Limiter Is Implemented
+
+                        Usually at
+
+                        API Gateway
+
+                        Examples
+
+                        Kong
+                        NGINX
+                        AWS API Gateway
+                        Envoy
+                        Handling 1 Crore Requests with Rate Limiter
+
+                        Use distributed rate limiter.
+
+                        Architecture
+
+                        Clients
+                        ↓
+                        API Gateway cluster
+                        ↓
+                        Redis Cluster
+                        ↓
+                        Services
+
+                        Redis ensures global rate limits across all servers.
+
+                        Strong Interview Answer (Senior Level)
+
+                        When asked:
+
+                        "How would you build scalable rate limiter?"
+
+                        Answer:
+
+                        1. Use token bucket algorithm
+                        2. Store counters in Redis
+                        3. Use Redis cluster for scale
+                        4. Enforce limits at API Gateway
+                        5. Use fallback if Redis unavailable
+                        One Powerful Interview Tip (10+ Years)
+
+                        When answering system design questions, always mention:
+
+                        Scalability
+                        Fault tolerance
+                        Consistency
+                        Observability
+
+                        Example:
+
+                        "We would use Redis cluster for distributed rate limiting, ensure horizontal scalability via API gateway instances, and add metrics via Prometheus to monitor rejection rates."
+
+
+
+
+
