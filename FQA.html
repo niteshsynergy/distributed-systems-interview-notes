@@ -1,0 +1,732 @@
+
+Author Notes: Practical explanations for Java/Spring backend engineers.
+
+---
+
+# 1. SAGA PATTERN (Distributed Transactions)
+
+## Problem
+
+In microservices, a transaction spans multiple services.
+
+Example:
+
+Order Service → Payment Service → Inventory Service
+
+Traditional DB transactions cannot span multiple services.
+
+If Payment succeeds but Inventory fails → system becomes inconsistent.
+
+---
+
+## Solution: Saga Pattern
+
+Saga breaks a transaction into multiple smaller local transactions.
+
+Each service performs its operation and publishes an event.
+
+If any step fails, compensating transactions undo previous steps.
+
+---
+
+## Types of Saga
+
+1. Choreography-based
+Services communicate through events.
+
+Order → Event → Payment → Event → Inventory
+
+2. Orchestration-based
+A central orchestrator controls the workflow.
+
+---
+
+## Example Flow
+
+User places order:
+
+1. Order created
+2. Payment charged
+3. Inventory reserved
+
+If inventory fails:
+
+Compensation triggered
+
+1. Refund payment
+2. Cancel order
+
+---
+
+## Code Example (Event-based Saga using Kafka)
+
+Order Service:
+
+```java
+public void createOrder(Order order){
+orderRepository.save(order);
+
+kafkaTemplate.send("order-created", order);
+}
+```
+
+Payment Service:
+
+```java
+@KafkaListener(topics="order-created")
+public void processPayment(Order order){
+paymentService.charge(order);
+kafkaTemplate.send("payment-success", order);
+}
+```
+
+Inventory Service:
+
+```java
+@KafkaListener(topics="payment-success")
+public void reserveInventory(Order order){
+inventoryService.reserve(order);
+}
+```
+
+---
+
+## Problems Saga Solves
+
+Distributed transaction coordination
+
+High availability
+
+Loose coupling
+
+---
+
+## FAQs
+
+Q: Why not use two-phase commit?
+
+A: It is slow and tightly couples services.
+
+Q: When to use Saga?
+
+A: When business workflow spans multiple microservices.
+
+---
+
+# 2. EVENT DRIVEN ARCHITECTURE
+
+## Definition
+
+Systems communicate via events instead of direct calls.
+
+Example:
+
+User Service publishes event
+
+UserCreated
+
+Other services subscribe.
+
+---
+
+## Architecture
+
+Producer → Event Bus (Kafka) → Consumer
+
+---
+
+## Benefits
+
+Loose coupling
+
+Scalability
+
+Asynchronous processing
+
+---
+
+## Example
+
+User registers.
+
+User service publishes:
+
+UserCreated event
+
+Email service listens.
+
+---
+
+## Kafka Example
+
+Producer
+
+```java
+kafkaTemplate.send("user-created", user);
+```
+
+Consumer
+
+```java
+@KafkaListener(topics="user-created")
+public void handleUserCreated(User user){
+emailService.sendWelcomeMail(user);
+}
+```
+
+---
+
+## Problems Solved
+
+Microservice communication
+
+Decoupling services
+
+Handling spikes in traffic
+
+---
+
+## FAQs
+
+Q: Why event driven?
+
+A: It allows services to evolve independently.
+
+Q: When not to use?
+
+A: When immediate synchronous response is required.
+
+---
+
+# 3. CQRS (Command Query Responsibility Segregation)
+
+## Problem
+
+Read and write workloads have different patterns.
+
+Example:
+
+Write: Order placement
+
+Read: Order dashboard queries
+
+Using same database can cause bottlenecks.
+
+---
+
+## Solution
+
+Separate read and write models.
+
+Command model → writes
+
+Query model → reads
+
+---
+
+## Architecture
+
+Client
+
+↓
+
+Command API → Write DB
+
+↓
+
+Events
+
+↓
+
+Query DB (optimized for reads)
+
+---
+
+## Example
+
+Write model uses relational DB.
+
+Read model uses ElasticSearch.
+
+---
+
+## Code Example
+
+Command service
+
+```java
+public void createOrder(Order order){
+orderRepository.save(order);
+}
+```
+
+Query service
+
+```java
+public List<OrderView> getOrders(){
+    return orderViewRepository.findAll();
+    }
+    ```
+
+    ---
+
+    ## Benefits
+
+    Better performance
+
+    Scalability
+
+    Optimized read models
+
+    ---
+
+    ## FAQs
+
+    Q: When should CQRS be used?
+
+    A: When read traffic is much higher than write traffic.
+
+    ---
+
+    # 4. EVENT SOURCING
+
+    ## Definition
+
+    Instead of storing the current state, store all events.
+
+    Example:
+
+    AccountCreated
+
+    MoneyDeposited
+
+    MoneyWithdrawn
+
+    State reconstructed from events.
+
+    ---
+
+    ## Example
+
+    Events
+
+    AccountCreated(100)
+
+    Deposit(50)
+
+    Withdraw(20)
+
+    Current balance = 130
+
+    ---
+
+    ## Code Example
+
+    ```java
+    class Account {
+    List<Event> events;
+
+        void deposit(int amount){
+        events.add(new MoneyDeposited(amount));
+        }
+        }
+        ```
+
+        ---
+
+        ## Benefits
+
+        Audit history
+
+        Easy debugging
+
+        Event replay
+
+        ---
+
+        ## Problems
+
+        Storage overhead
+
+        Complexity
+
+        ---
+
+        # 5. KAFKA
+
+        ## Partitioning
+
+        Kafka topic divided into partitions.
+
+        Each partition processed sequentially.
+
+        Example
+
+        Topic: orders
+
+        Partitions:
+
+        0,1,2
+
+        ---
+
+        ## Consumer Groups
+
+        Consumers in same group share load.
+
+        Example
+
+        3 consumers
+
+        3 partitions
+
+        Each consumer handles one partition.
+
+        ---
+
+        ## Exactly Once Processing
+
+        Kafka provides idempotent producer and transactional writes.
+
+        Example config:
+
+        ```properties
+        enable.idempotence=true
+        ```
+
+        ---
+
+        ## Retry Queues
+
+        Failed messages pushed to retry topic.
+
+        Example:
+
+        orders-retry
+
+        ---
+
+        ## Dead Letter Queue (DLQ)
+
+        Messages failing multiple times stored for investigation.
+
+        Example:
+
+        orders-dlq
+
+        ---
+
+        ## Example Flow
+
+        API
+
+        ↓
+
+        Kafka topic
+
+        ↓
+
+        Worker service
+
+        ↓
+
+        Database
+
+        ---
+
+        ## FAQs
+
+        Q: Why Kafka?
+
+        High throughput
+
+        Fault tolerance
+
+        Scalability
+
+        ---
+
+        # 6. DATABASE SCALING
+
+        ## Read Replicas
+
+        Primary DB handles writes.
+
+        Replicas handle reads.
+
+        Architecture
+
+        App → Primary DB (write)
+
+        App → Replica DB (read)
+
+        ---
+
+        ## Sharding
+
+        Split database horizontally.
+
+        Example
+
+        UserID % 4
+
+        Shard1
+
+        Shard2
+
+        Shard3
+
+        Shard4
+
+        ---
+
+        ## Partitioning
+
+        Large table split into smaller partitions.
+
+        Example
+
+        Orders_2023
+
+        Orders_2024
+
+        ---
+
+        ## Avoid Hot Partitions
+
+        Use hashing.
+
+        Bad
+
+        UserID sequential
+
+        Good
+
+        hash(UserID)
+
+        ---
+
+        # 7. CACHING STRATEGIES
+
+        ## Cache Aside
+
+        Application loads cache manually.
+
+        Flow
+
+        Check cache
+
+        If miss → DB
+
+        Store result in cache.
+
+        ---
+
+        Example
+
+        ```java
+        User user = redis.get(id);
+
+        if(user==null){
+        user = db.getUser(id);
+        redis.set(id,user);
+        }
+        ```
+
+        ---
+
+        ## Write Through
+
+        Write goes to cache and DB.
+
+        ---
+
+        ## Write Back
+
+        Write goes to cache first then async DB update.
+
+        ---
+
+        ## Cache Invalidation
+
+        Remove cache when data updates.
+
+        ---
+
+        ## Cache Stampede
+
+        Many requests hit DB when cache expires.
+
+        Solutions
+
+        Random TTL
+
+        Request coalescing
+
+        ---
+
+        # 8. OBSERVABILITY
+
+        ## Metrics
+
+        Prometheus collects metrics.
+
+        Example
+
+        Request latency
+
+        Error rate
+
+        Throughput
+
+        ---
+
+        ## Visualization
+
+        Grafana dashboards.
+
+        ---
+
+        ## Logging
+
+        ELK stack
+
+        Elasticsearch
+
+        Logstash
+
+        Kibana
+
+        ---
+
+        ## Tracing
+
+        OpenTelemetry
+
+        Jaeger
+
+        Zipkin
+
+        ---
+
+        ## Example Debugging Flow
+
+        API latency increased.
+
+        Check:
+
+        1 CPU usage
+        2 DB slow queries
+        3 Downstream service
+        4 Thread pool usage
+        5 GC logs
+
+        ---
+
+        # 9. SYSTEM DESIGN EXAMPLES
+
+        ## Rate Limiter
+
+        Token bucket algorithm.
+
+        Tokens added periodically.
+
+        Request allowed only if token exists.
+
+        ---
+
+        ## URL Shortener
+
+        Key generation using Base62.
+
+        Store mapping:
+
+        short_url → original_url
+
+        ---
+
+        ## Notification System
+
+        API
+
+        ↓
+
+        Queue (Kafka)
+
+        ↓
+
+        Workers
+
+        ↓
+
+        Email/SMS provider
+
+        ---
+
+        ## Order Processing
+
+        API
+
+        ↓
+
+        Order Service
+
+        ↓
+
+        Kafka
+
+        ↓
+
+        Inventory + Payment
+
+        ↓
+
+        DB
+
+        ---
+
+        # 10. PRODUCTION INCIDENT QUESTIONS
+
+        ## Scenario 1
+
+        API latency 100ms → 5s
+
+        Check
+
+        DB queries
+
+        Thread pool exhaustion
+
+        Downstream service latency
+
+        GC pauses
+
+        ---
+
+        ## Scenario 2
+
+        Database connections exhausted.
+
+        Possible causes
+
+        Connection leak
+
+        Long transactions
+
+        Insufficient pool size
+
+        ---
+
+        ## Scenario 3
+
+        Kafka consumer lag increasing.
+
+        Solutions
+
+        Increase partitions
+
+        Scale consumers
+
+        Optimize processing
+
+        ---
